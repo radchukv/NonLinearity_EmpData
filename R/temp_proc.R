@@ -66,16 +66,9 @@
 #'                           oneGrid = FALSE, explanYear = TRUE,
 #'                           RefMon = NA, weatherVar = NA)
 #'
-climwin_proc <- function(biol_data, clim_data,
-                         ID, randwin = FALSE,
-                         seednum = 1302, repeats = 200,
-                         plot_check = FALSE,
-                         cinterval = 'week',
-                         out_clim = 'output_climwin_test',
-                         stat = 'mean',
-                         explanYear = TRUE,
-                         startWindow = 0, endWindow = 52,
-                         RefMon = NA, weatherVar = NA){
+temp_proc <- function(biol_data, clim_data,
+                         ID, plot_check = FALSE,
+                         out_clim = 'output_climwin_test'){
 
   biol_data <- droplevels(biol_data[biol_data$ID == ID, ])
 
@@ -172,149 +165,19 @@ climwin_proc <- function(biol_data, clim_data,
     summarise(., mean_Temp = mean(Temp, na.rm = T))
   # I may need to catch here cases where the mean yearly temperature is NA...
 
-
   #hist(Clim_y$mean_Temp)
-
-  # standardizing the weather /// OR, basically just centering, so that variation is preserved???
-
+biol_meanT <- merge(biol_data, Clim_y, by = 'Year')
 
 
-
-  # NOW THAT WE HAVE CLIMATE AND BIOLOGICAL DATA WE CAN RUN CLIMWIN!!
-  set.seed(seednum)
-
-  # biol_data$W <- 1 / biol_data$Trait_SE^2
-  # get the refday for each species - the latest observed date (across years)
-  # for phenological traits or the latest record made for morphological traits
-  if (! is.na(RefMon)){
-    refDay <-  as.Date(paste('01', RefMon, lubridate::year(Sys.Date()), sep = '/'),
-                       format = '%d/%m/%Y')
-    print(refDay)
-  }else {
-    if(unique(biol_data$Trait_Categ) == 'Phenological'){
-      refDay <- max(biol_data$Trait_mean, na.rm = T)
-      refDay <- as.Date(refDay, origin = as.Date(paste('01', '01', lubridate::year(Sys.Date()), sep = '/'),
-                                                 format = '%d/%m/%Y'))
-    }
-    if(unique(biol_data$Trait_Categ) == 'Morphological'){
-      if(length(grep('-', unique(biol_data$Record_date), value = T)) != 0){
-        RecMonth <- strsplit( grep('-', unique(biol_data$Record_date), value = T), split = '-')[[1]][2]
-        RecMonth <- substr(RecMonth, 1, 3)
-      }else{
-        RecMonth <- as.character(unique(biol_data$Record_date))
-        RecMonth <- substr(RecMonth, 1, 3)
-      }
-      if (! is.na(RecMonth)){
-      if(RecMonth == 'Feb'){
-        refDay <- as.Date(paste('28', RecMonth, lubridate::year(Sys.Date()), sep = '/'),
-                          format = '%d/%B/%Y')
-      }else{
-        refDay <- as.Date(paste('30', RecMonth, lubridate::year(Sys.Date()), sep = '/'),
-                          format = '%d/%B/%Y')
-      }
-      } else {
-        refDay <- NA
-        }
-      print(refDay)
-    }
-  }
-
-  ## replacing the SEs for those studies where they are fully missing
-  if (sum(is.na(biol_data$Trait_SE)) == nrow(biol_data)){
-    biol_data$Trait_SE <- 1}
-
-  ## have to exclude the rows with missing biological data before running the slidingwin
-  biol_data_noNA <- biol_data %>%
-    dplyr::filter(!is.na(Trait_mean) & !is.na(Trait_SE)) %>%
-    # create weights here, otherwise slidingwin does not see them
-    dplyr::mutate(W = 1/ Trait_SE^2)
-
-  ## prepare the baseline formula
-  if(explanYear){
-    formBase <<- 'Trait_mean ~ Year'
-  }else{
-    formBase <<- 'Trait_mean ~ 1'
-  }
-
-  ptstart <- proc.time()
-  climwin_output <- climwin::slidingwin(xvar = list(Temp = Clim$Temp),
-                                        cdate = Clim$Date,
-                                        bdate = biol_data_noNA$Date,
-                                        baseline = stats::lm(stats::as.formula(formBase),
-                                                             data = biol_data_noNA,
-                                                             weights = W),
-                                        range = c(endWindow, startWindow),
-                                        cinterval = cinterval,
-                                        stat = stat, func = 'lin',
-                                        type = 'absolute',
-                                        refday = c(lubridate::day(refDay),
-                                                   lubridate::month(refDay)),
-                                        cmissing = 'method1')
-  ptfinish <- proc.time() - ptstart
-  cat('When fitting slidingwin() the time elapsed is ',
-      ptfinish[3], ';\n', 'time spend for ',
-      names(ptfinish)[1], ' is ', ptfinish[1], ';\n',
-      'for ', names(ptfinish)[2], ' is ', ptfinish[2],
-      '\n', sep = '')
-
-
-  if(randwin){
-
-    ptstart <- proc.time()
-    randwin_output <- climwin::randwin(repeats = repeats,
-                                       xvar = list(Temp = Clim$Temp),
-                                       cdate = Clim$Date,
-                                       bdate = biol_data_noNA$Date,
-                                       baseline = lm(stats::as.formula(formBase),
-                                                     data = biol_data_noNA,
-                                                     weights = W),
-                                       range = c(endWindow, startWindow),
-                                       cinterval = cinterval,
-                                       stat = stat, func = 'lin',
-                                       type = 'absolute',
-                                       refday = c(lubridate::day(refDay),
-                                                  lubridate::month(refDay)),
-                                       cmissing = 'method1')
-    ptfinish <- proc.time() - ptstart
-    cat('When running randwin() with ', repeats,
-        'number of repeats, the time elapsed is ',
-        ptfinish[3], ';\n', 'time spend for ',
-        names(ptfinish)[1], ' is ', ptfinish[1], ';\n',
-        'for ', names(ptfinish)[2], ' is ', ptfinish[2],
-        '\n', sep = '')
+## output the data
 
     # create a tibble to save all output together
-    clim_out <- tibble::tibble(ID = biol_data$ID[1],
-                               Species = biol_data$Species[1],
-                               Trait = biol_data$Trait[1],
-                               climwin_output = list(climwin_output[[1]]),
-                               randwin_output = list(randwin_output[[1]]),
-                               refDay = refDay,
-                               clim_data = list(Clim),
-                               biol_data = list(biol_data))
-    saveRDS(object = clim_out,
-            file = paste0('./', out_clim, '/', biol_data$ID[1], '_',
-                          biol_data$Species[1], '_', biol_data$Location[1],
-                          '_', biol_data$Trait[1], '_OneGrid_', oneGrid,
-                          '_explYear_', explanYear, '_EndWindow_',
-                          endWindow, '_RefMon_', RefMon, '_Rand',  '.RDS'))
-
-  } else {
-    # create a tibble to save all output together
-    clim_out <- tibble::tibble(ID = biol_data$ID[1],
-                               Species = biol_data$Species[1],
-                               Trait = biol_data$Trait[1],
-                               climwin_output = list(climwin_output[[1]]),
-                               refDay = refDay,
-                               clim_data = list(Clim),
-                               biol_data = list(biol_data))
-    saveRDS(object = clim_out,
+    clim_out <- tibble::tibble(data = list(biol_meanT))
+    saveRDS(object = biol_meanT,
             file = paste0('./', out_clim, '/', biol_data$ID[1], '_',
                           biol_data$Species[1], '_',
                           biol_data$Location[1], '_', biol_data$Trait[1],
-                          '_OneGrid_', oneGrid, '_explYear_', explanYear,
-                          '_EndWindow_', endWindow, '_RefMon_', RefMon,
                           '.RDS'))
-  }
+
   return(clim_out)
 }
