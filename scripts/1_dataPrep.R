@@ -1,30 +1,11 @@
-#### Climwin analyses of sTraitChange data
-#### Authors: V Radchuk & C Jones
+## read in the temperature and biological study data
 
-devtools::install_github('radchukv/sTraitChange', auth_token = '4a4aba816767714248758ae04b068ff7d2d92097')
-devtools::install_github("LiamDBailey/climwin", ref = "devel")
-library(sTraitChange)
 library(dplyr)
 library(ggplot2)
 library(magrittr)
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
-####                        Weather EUROPE                        ####
-meanT <- raster::stack('./data-raw/tg_ens_mean_0.1deg_reg_v18.0e.nc', varname = 'tg')
-meanP <- raster::stack('./data-raw/rr_ens_mean_0.1deg_reg_v18.0e.nc', varname = 'rr')
-
-
-##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
-####                        Weather USA                           ####
-# precip
-precip_CPC_US <- list.files('./data-raw/weather/precip_USA/', full.names = T)
-totP_US <- raster::stack(lapply(1:length(precip_CPC_US), FUN = function(x){
-  raster::stack(precip_CPC_US[x])}))
-## need to bring all the coordinate systems to the common denominator...
-## climatic model use longitude coordinates that run from 0 to 360, rather than -180 to 180
-## see here: http://r-sig-geo.2731867.n2.nabble.com/Raster-projection-alignment-issues-td7587564.html
-## needs rotation
-totP_US <- raster::rotate(totP_US)
+####                        Weather world                        ####
 
 temp_CPC <- list.files('./data-raw/weather/temp_world/', full.names = T)
 
@@ -38,9 +19,6 @@ minT <- raster::stack(lapply(1:length(min_CPC), FUN = function(x){
 ## read the prepared mean T stack
 meanT_world <- raster::stack('./data-raw/weather/temp_world/meanT_world_CPC.nc', varname = 'variable') ## does not preserve the names of the layers
 names(meanT_world) <- names(minT)
-# pdf('./output_climwin_test/T_world.pdf')
-# raster::plot(meanT_US[[1]])
-# dev.off()
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
@@ -52,47 +30,15 @@ all_SST <- raster::stack(lapply(1:length(daily_SST_single), FUN = function(x){
 
 
 ## read the prepared rotated SST stack
-rot_SST <- raster::stack('./data-raw/weather/SST/SST_rotated.nc') ## does not preserve the names of the layers
+rot_SST <- raster::stack('./data-raw/weather/SST/SST_rotated.nc') ## check: this file is not in the folder
 names(rot_SST) <- names(all_SST)
 
-
-##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
-####                        World: Precipit                            ####
-precip_W <- list.files('./data-raw/weather/prec_world', full.names = T)
-Precip_W_single <- grep('precip.', precip_W, value = T)
-world_P <- raster::stack(lapply(1:length(Precip_W_single), FUN = function(x){
-  raster::stack(Precip_W_single[x])}))
-
-## read the prepared rotated world precip stack
-rot_prec <- raster::stack('./data-raw/weather/prec_world/Prec_rotated.nc') ## does not preserve the names of the layers
-names(rot_prec) <- names(world_P)
-
-
-##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
-####                        Weather Australia                           ####
-# precip
-precip_AU <- list.files('./data-raw/weather/Australia/Precipit_AU/', full.names = T)
-totP_AU <- raster::stack(lapply(1:length(precip_AU), FUN = function(x){
-  raster::stack(precip_AU[x])}))
-totP_AU
-
-## temp
-temp_AU <- list.files('./data-raw/weather/Australia/Temp_AU/', full.names = T)
-
-## minT - for names of the layers
-min_T_AU <- grep('tmin', temp_AU, value = TRUE)
-minT_AU <- raster::stack(lapply(1:length(min_T_AU), FUN = function(x){
-  raster::stack(min_T_AU[x])}))
-
-## read the prepared mean T
-meanT_AU <- raster::stack('./data-raw/weather/Australia/Temp_AU/meanT_AU.nc') ## does not preserve the names of the layers
-names(meanT_AU) <- names(minT_AU)
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
 ####                        BIOLOGICAL data                            ####
 
 biol_dat <- read.csv('./data-raw/Data_1_02_2021.csv', header = T)
-levels(biol_dat$Country)
+unique(biol_dat$Country)
 
 
 ## study by Moeller with non-comparable phenological measure, exclude
@@ -115,6 +61,8 @@ biol_dat$Demog_rate_Categ <- trimws(biol_dat$Demog_rate_Categ)
 
 
 
+## I actually do not have to do these next steps if I simply use world temperature
+# with 0.5 by 0.5 resolution for all the studies in the dataset
 ## keep only European studies and US - for now (two separate datasets, because climwin are diff.)
 biol_eu <- droplevels(subset(biol_dat, ! Country %in% c('Antarctica', 'Australia',
                                                         'Canada', 'Falkland Islands',
