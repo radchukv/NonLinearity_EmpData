@@ -4,6 +4,11 @@ library(dplyr)
 library(ggplot2)
 library(magrittr)
 
+# load functions
+source('./R/convert_JulianDay.R')
+source('./R/prep_subset.R')  ## for now I go without it because I do not see why I would need all those additional things done in that little function
+## Conside removing in the end
+
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
 ####                        Weather world                        ####
 
@@ -59,12 +64,57 @@ length(unique(biol_dat$ID))    ## 309
 ## some Demog_rate_Categ have white spaces... Correcting
 biol_dat$Demog_rate_Categ <- trimws(biol_dat$Demog_rate_Categ)
 
+## all characters as factors
+biol_dat_fc <- biol_dat %>%
+  mutate_if(is.character, as.factor)
+
+## use the funciton to converting the dates that are not Julian to Julian dates
+biol_dat_stand <- convert_JulianDay(biol_data = biol_dat_fc)
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
+####            Split into seabirds and others            ####
+
+## splitting hte dataset into all who are not seabirds and the dataset with seabirds only
+SeaBird <- droplevels(biol_dat_stand %>%
+                                     dplyr::filter(., BirdType == 'Seabird'))
+length(unique(SeaBird$ID)) # 68
+
+others <- droplevels(biol_dat_stand %>%
+                       dplyr::filter(., BirdType != 'Seabird'))
+
+length(unique(others$ID))  ## 241
 
 
+# quick check of the data in both datasets
+max(SeaBird$Trait_mean[SeaBird$Trait_Categ == 'Phenological'], na.rm = T)
+hist(SeaBird$Trait_mean[SeaBird$Trait_Categ == 'Phenological'])
+
+unique(SeaBird$Unit_trait[SeaBird$Trait_Categ == 'Morphological'])
+## so basically these would have to be looked at separatly for weight and for length....
+max(SeaBird$Trait_mean[SeaBird$Trait_Categ == 'Morphological'], na.rm = T)
+hist(SeaBird$Trait_mean[SeaBird$Trait_Categ == 'Morphological'])
+
+
+max(others$Trait_mean[others$Trait_Categ == 'Phenological'], na.rm = T)
+hist(others$Trait_mean[others$Trait_Categ == 'Phenological'])
+
+unique(others$Unit_trait[others$Trait_Categ == 'Morphological']) ## here we have everything, kg, grams, cm, mm.....
+# --> Standardize the trait prior to fitting the rleations between the yearly temperature and the trait
+
+## so basically looking at histogrmas has to be done separatly for weight and for length + per unit....
+
+
+
+
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~`#`
+
+## the rest can be trashed
 ## I actually do not have to do these next steps if I simply use world temperature
 # with 0.5 by 0.5 resolution for all the studies in the dataset
 ## keep only European studies and US - for now (two separate datasets, because climwin are diff.)
-biol_eu <- droplevels(subset(biol_dat, ! Country %in% c('Antarctica', 'Australia',
+biol_eu <- droplevels(subset(biol_dat_fc, ! Country %in% c('Antarctica', 'Australia',
                                                         'Canada', 'Falkland Islands',
                                                         'Greenland', 'Mexico',
                                                         'New Zealand', 'South Africa',
