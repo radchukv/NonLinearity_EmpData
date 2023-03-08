@@ -26,12 +26,12 @@ Oth_yearly <- lapply(IDs_others, FUN = function(x){
 
 
 # seabird studies
-IDs_others <- unique(others$ID)
-Oth_yearly <- lapply(IDs_others, FUN = function(x){
-  temp_proc(biol_data = others,
-            clim_data = meanT_world,
+IDs_seab <- unique(SeaBird$ID)
+SeaB_yearly <- lapply(IDs_seab, FUN = function(x){
+  temp_proc(biol_data = SeaBird,
+            clim_data = rot_SST,
             ID = x, plot_check = TRUE,
-            out_clim = './output/output_temp')})
+            out_clim = './output/output_temp_SeaB')})
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~`#`
