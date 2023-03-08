@@ -6,6 +6,8 @@ library(tidyr)
 library(purrr)
 library(broom)
 
+## source functions
+source('./R/fit_shape.R')
 
 ## read in the studies
 fil <- list.files(path = './output/output_temp/', full.names = TRUE)
@@ -218,3 +220,22 @@ for(i in 1:8){
   print(TempResid_traitResid)
 }
 dev.off()
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
+####              compare diff shapes               ####
+
+## test fit_shape for trait-temperature relations
+check <- fit_shape(data = all_trans,
+                   x = 'Temp_z',
+                   y = 'Trait_z',
+                   ID = 1,
+                   Thresh = 2,
+                   out_folder = './output/output_nonL/shapes/')
+
+# run function with detrended temperaturr eand standardized trait across studies
+## trying with a rather low threshold of 4
+shapes_fit <- do.call('rbind', lapply(unique(all_trans$ID), FUN = function(x){fit_shape(data = all_trans, ID = x,
+                                                                                        Thresh = 4,  ## a rather low thresh
+                                                                                        x = 'Temp_resid',
+                                                                                        y = 'Trait_z',
+                                                                                        out_folder = './output/output_nonL/shapes/')}))

@@ -6,13 +6,6 @@ library(patchwork)
 ## setting the ggplot theme
 # ggplot2::theme_set(theme_classic())
 
-## test fit_shape for trait-temperature relations
-check <- fit_shape(data = all_trans,
-          x = 'Temp_z',
-          y = 'Trait_z',
-          ID = 1,
-          Thresh = 2,
-          out_folder = './output/output_nonL/shapes/')
 
 
 ## reading in the data per study returned from merging all the climwin outputs prepared for SEM
