@@ -202,7 +202,7 @@ dev.off()
 
 ## first exploring the behaviour of sigmoid function as specified currently
 fun_sigm <- function(beta, Trait_value, interc){
-Dem_rate <- (1/(1+exp(-5*beta*Trait_value)) - 0.5)*4 + interc
+Dem_rate <- (1/(1+exp(-5*(interc + beta*Trait_value))) - 0.5)*4
   return(Dem_rate)
 }
 
@@ -213,7 +213,7 @@ Trait_v <- seq(-2, 2, by = 0.1)
 
 interc <- seq(-2, 2, by = 1)
 
-beta <- c(-1, -0.5, -0.2, -0.1, 0.1, 0.2, 0.5, 1)
+beta <- c(seq(-5, 5, by = 1), -0.1, 0.1)
 
 DemRate <- unlist(lapply(Trait_v, FUN = function(x){fun_sigm(beta = 1, interc = 0, Trait_value = x)}))
 plot(Trait_v, DemRate)
@@ -238,7 +238,7 @@ dat_col <- data.frame(interc = rep(c(-1, 0, 1, 2), 2),
                                  each = length(c(-1, 0, 1, 2))),
                       col = 'blue', demRate = 0, Trait_v = 0)
 
-pdf('./output_nonL/SupplFig_ParSpace_Sigmoid_betaRows_IntercColumns.pdf', height = 8, width = 6)
+pdf('./output/output_nonL/SupplFig_ParSpace_Sigmoid_betaRows_IntercColumns_innerForm.pdf', height = 8, width = 6)
 ggplot(dat, aes(x = Trait_v, y = demRate)) +
   geom_line() +
   geom_rect(data = dat_col, aes(fill = col),
@@ -268,7 +268,7 @@ dev.off()
 
 ##I want to check whether weindeed need that -5 in front of beta and then -0.5 and 4 as a multiplier...
 fun_sigm <- function(beta, Trait_value, interc){
-  Dem_rate <- (1/(1+exp(beta*Trait_value))) + interc
+  Dem_rate <- (1/(1+exp(interc + beta*Trait_value)))
   return(Dem_rate)
 }
 
@@ -304,7 +304,7 @@ dat_col <- data.frame(interc = rep(c(-1, 0, 1, 2), 2),
                                  each = length(c(-1, 0, 1, 2))),
                       col = 'blue', demRate = 0, Trait_v = 0)
 
-pdf('./output/output_nonL/SupplFig_ParSpace_Sigmoid_betaRows_IntercColumns_LargerBetaRange.pdf', height = 8, width = 6)
+pdf('./output/output_nonL/SupplFig_ParSpace_Sigmoid_betaRows_IntercColumns_correctedFormula.pdf', height = 8, width = 6)
 ggplot(dat, aes(x = Trait_v, y = demRate)) +
   geom_line() +
   geom_rect(data = dat_col, aes(fill = col),
