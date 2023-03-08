@@ -1,5 +1,5 @@
 
-## first exploring the behaviour of sigmoid function as specified currently
+## first exploring the behaviour of sigmoid function as specified currently, i.e. to give as output rnage of values between -2 and 2 (i.e. if limate affects traits)
 fun_sigm <- function(beta, Trait_value, interc){
   Dem_rate <- (1/(1+exp(-5*(interc + beta*Trait_value))) - 0.5)*4
   return(Dem_rate)
@@ -52,20 +52,12 @@ ggplot(dat, aes(x = Trait_v, y = demRate)) +
 
 dev.off()
 
-dat$demR_prob <- exp(dat$demRate) / (1+ exp(dat$demRate))
-hist(dat$demR_prob)
-pdf('./output_nonL/explore_Sigmoid_betaRows_IntercColumns_ProbabScale.pdf', height = 10, width = 8)
-ggplot(dat, aes(x = Trait_v, y = demR_prob)) +
-  geom_line() + facet_grid(beta ~ interc) +
-  theme_bw()
-dev.off()
-
 ## so, the function does behave well, but under low betas it resembles linear.. and that is
 ## what we get with the data
 
 
 
-##I want to check whether weindeed need that -5 in front of beta and then -0.5 and 4 as a multiplier...
+## For probs of surivval we in fact do not need these scaling (i.e. multiple by 5, -0.5) because we end up with probabilities, and they rnage between 0 and 1
 fun_sigm <- function(beta, Trait_value, interc){
   Dem_rate <- (1/(1+exp(interc + beta*Trait_value)))
   return(Dem_rate)
@@ -116,14 +108,6 @@ ggplot(dat, aes(x = Trait_v, y = demRate)) +
   theme(panel.grid.minor = element_blank(),
         strip.background = element_rect(fill = 'white'))
 
-dev.off()
-
-dat$demR_prob <- exp(dat$demRate) / (1+ exp(dat$demRate))
-hist(dat$demR_prob)
-pdf('./output/output_nonL/explore_Sigmoid_betaRows_IntercColumns_ProbabScale_LargerBetaRange.pdf', height = 10, width = 8)
-ggplot(dat, aes(x = Trait_v, y = demR_prob)) +
-  geom_line() + facet_grid(beta ~ interc) +
-  theme_bw()
 dev.off()
 
 
