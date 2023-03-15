@@ -5,6 +5,9 @@ library(ggplot2)
 library(tidyr)
 library(purrr)
 library(broom)
+library(minpack.lm)
+library(lme4)
+library(glmmTMB)
 
 ## source functions
 source('./R/fit_shape.R')
@@ -13,7 +16,51 @@ source('./R/fit_shape.R')
 fil <- list.files(path = './output/output_temp/', full.names = TRUE)
 
 all<- bind_rows(lapply(fil, FUN = function(x){readRDS(file = x)}))
+all <- all %>%
+  mutate(ID_fac = as.factor(ID))
 
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
+####                analyses of temperature over years across studies    ####
+
+## Check how temperature across studies across years look
+ggplot(all, aes(x = Year, y = mean_Temp)) +
+  geom_point()
+
+ggplot(all, aes(x = Year, y = mean_Temp, col = ID_fac)) +
+  geom_point() + theme(legend.position = 'none')
+
+hist(all$mean_Temp)
+quantile(all$mean_Temp, na.rm = T, probs = c(0.25, 0.5, 0.75))
+mean(all$mean_Temp, na.rm = T)
+
+## centering temperature across studies across years
+all <- all %>%
+  mutate(temp_center = as.numeric(scale(mean_Temp, center = TRUE, scale = FALSE)))
+
+ggplot(all, aes(x = Year, y = temp_center, col = ID_fac)) +
+  geom_point() + theme(legend.position = 'none')
+hist(all$temp_center)
+
+sd(all$temp_center, na.rm = TRUE)  ##  SD: 5.814646
+
+
+## fit mixed-effects model with the study as random intercept, year as explanatory adn centered tmep as response
+## to see what is the slope of temperature increase over time in this dataset
+mod_T_randi <- lmer(temp_center ~ Year + (1|ID_fac), data= all, REML = FALSE)
+summary(mod_T_randi)  ## slope of temp on year: 0.021691
+
+
+## include autocor
+all$Year_fac <- as.factor(all$Year)
+mod_T_randi_aut <- glmmTMB(temp_center ~ Year + (1 |ID_fac) +  ar1(Year_fac - 1 | ID_fac),
+                   data = all)
+summary(mod_T_randi_aut)  ## slope of temp on year:  0.040716, autocor = 0.94
+
+
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
+####                prepare the data for fitting diff. shapes    ####
 
 ## detrending temperature oevr years
 data_Tempdetr <- all %>%
@@ -239,3 +286,4 @@ shapes_fit <- do.call('rbind', lapply(unique(all_trans$ID), FUN = function(x){fi
                                                                                         x = 'Temp_resid',
                                                                                         y = 'Trait_z',
                                                                                         out_folder = './output/output_nonL/shapes/')}))
+
