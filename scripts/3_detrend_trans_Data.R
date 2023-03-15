@@ -197,7 +197,7 @@ dev.off()
 
 ## test fit_shape for trait-temperature relations
 check <- fit_shape(data = all_trans,
-                   x = 'temp_centered',
+                   x = 'temp_center',
                    y = 'Trait_z',
                    ID = 1,
                    Thresh = 2,
@@ -207,7 +207,58 @@ check <- fit_shape(data = all_trans,
 ## trying with a rather low threshold of 4
 shapes_fit <- do.call('rbind', lapply(unique(all_trans$ID), FUN = function(x){fit_shape(data = all_trans, ID = x,
                                                                                         Thresh = 4,  ## a rather low thresh
-                                                                                        x = 'temp_centered',
+                                                                                        x = 'temp_center',
                                                                                         y = 'Trait_z',
                                                                                         out_folder = './output/output_nonL/shapes/')}))
+
+table(shapes_fit$Selected)
+## linear  linear/sigmoid      quadratic        sigmoid
+# 48            191              1              1
+
+table(shapes_fit$mod_minAIC)
+
+## hmmm - maybe just use the minimum AIC to select the model???
+
+hist(shapes_fit$Delta1_AIC[shapes_fit$Selected == 'linear/sigmoid'])  ## those usually are very very close...
+
+
+## if using a threshol of 2:
+## linear linear/sigmoid      quadratic        sigmoid
+## 47            188              5              1
+
+## save the output with the deltaAIC of 4
+saveRDS(shapes_fit, file = './output/output_nonL/shapes/Shapes_4DeltaAIC.RDS')
+
+Lin <- shapes_fit %>%
+  filter(Selected %in% c('linear/sigmoid', 'linear'))
+
+Sigm <- shapes_fit %>%
+  filter(Selected %in% c('linear/sigmoid', 'sigmoid'))
+
+
+hist(Lin$Beta_Lin)
+hist(Lin$Int_Lin)
+
+ggplot(Lin, aes(x = Int_Lin, y = Beta_Lin)) + geom_point()
+cor.test(Lin$Int_Lin, Lin$Beta_Lin)  ##        cor  -0.4361498
+
+## So: either draw direct combis of slopes and and intercepts OR use multinorm to do so
+
+
+## relations selected based on the MinAIC
+
+Lin_minAIC <- shapes_fit %>%
+  filter(mod_minAIC %in% c('linear'))
+
+Sigm_minAIC <- shapes_fit %>%
+  filter(mod_minAIC %in% c('sigmoid'))
+
+
+hist(Lin_minAIC$Beta_Lin)
+hist(Lin_minAIC$Int_Lin)
+
+ggplot(Lin_minAIC, aes(x = Int_Lin, y = Beta_Lin)) + geom_point()
+cor.test(Lin_minAIC$Int_Lin, Lin_minAIC$Beta_Lin)  # cor -0.5561408
+
+
 
