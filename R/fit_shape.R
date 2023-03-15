@@ -8,6 +8,7 @@ fit_shape <- function(data = all_trans,
                       Thresh = 2,
                       out_folder = './output/output_nonL/shapes/'){
   sub_data <- droplevels(data[data$ID ==  ID, ])
+sub_data <- sub_data[! (is.na(sub_data[[x]]) | is.na(sub_data[[y]])), ]
 
   lin_mod_form <- paste0(y, '~ interc + beta *', x)
   quad_mod_form <- paste0(y, '~ interc + beta *', x, '+ beta2 * ', x, '^2')
@@ -19,7 +20,18 @@ fit_shape <- function(data = all_trans,
                               error=function(e) e)
   if(is(tt.error.linRel,"error")){
     warning(cat('error when fitting linear relation \n',
-                tt.error.linRel[1]$message, '\n'))
+                tt.error.linRel[1]$message, 'for study',
+                unique(sub_data$ID), '\n'))
+  }
+
+  tt.error.linRel <- tryCatch(linRel <- nlsLM(lin_mod_form,
+                                              start = list(interc = 0, beta = 1), upper = c(10, 10),
+                                              data = sub_data, algorithm  = "LM",control = list(maxiter = 200)),
+                              error=function(e) e)
+  if(is(tt.error.linRel,"error")){
+    warning(cat('error when fitting linear relation \n',
+                tt.error.linRel[1]$message, 'for study',
+                unique(sub_data$ID), '\n'))
   }
 
   if(! is(tt.error.linRel,"error")){
@@ -33,7 +45,8 @@ fit_shape <- function(data = all_trans,
                                error=function(e) e)
   if(is(tt.error.quadRel,"error")){
     warning(cat('error when fitting quadratic relation \n',
-                tt.error.quadRel[1]$message, '\n'))
+                tt.error.quadRel[1]$message, 'for study',
+                unique(sub_data$ID), '\n'))
   }
   if(! is(tt.error.quadRel,"error")) {
     if(is.infinite(MuMIn::AICc(quadRel))){
@@ -42,13 +55,33 @@ fit_shape <- function(data = all_trans,
   }
 
   tt.error.sigmRel <- tryCatch(sigmRel <- nlsLM(sigm_mod_form,
-                                                start = list(interc = -5, beta = -5), upper = c(10, 10),
+                                                start = list(interc = 0, beta = 1),
                                                 data = sub_data, algorithm  = "LM",control = list(maxiter = 200)),
                                error=function(e) e)
   if(is(tt.error.sigmRel,"error")){
     warning(cat('error when fitting sigmoid relation \n',
-                tt.error.sigmRel[1]$message, '\n'))
+                tt.error.sigmRel[1]$message, 'for study',
+                unique(sub_data$ID), '\n'))
   }
+
+  ## trying to find the fitting init par-rs for those fits when sigmoid starts with the values that lead to a singular gradient matrix
+for (i in c(-15:15)){
+  for (j in c(-2:2)){
+  tt.error.sigmRel_test <- tryCatch(sigmRel_test <- nlsLM(sigm_mod_form,
+                                                start = list(interc = i, beta = j),
+                                                data = sub_data, algorithm  = "LM",control = list(maxiter = 200)),
+                               error=function(e) e)
+  if(is(tt.error.sigmRel_test,"error")){
+    warning(cat('error when fitting sigmoid relation \n',
+                tt.error.sigmRel[1]$message, 'for study',
+                unique(sub_data$ID), '\n'))
+  }
+  if(! is(tt.error.sigmRel_test,"error")){
+    tt.error.sigmRel <- tt.error.sigmRel_test
+    sigmRel <- sigmRel_test
+  }
+  }
+}
   if(! is(tt.error.sigmRel,"error")) {
     if(is.infinite(MuMIn::AICc(sigmRel))){
       warning(cat('infinite AIC for sigmoid relation \n'))
