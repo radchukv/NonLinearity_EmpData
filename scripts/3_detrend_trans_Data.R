@@ -227,7 +227,11 @@ hist(shapes_fit$Delta1_AIC[shapes_fit$Selected == 'linear/sigmoid'])  ## those u
 ## 47            188              5              1
 
 ## save the output with the deltaAIC of 4
-saveRDS(shapes_fit, file = './output/output_nonL/shapes/Shapes_4DeltaAIC.RDS')
+#saveRDS(shapes_fit, file = './output/output_nonL/shapes/Shapes_4DeltaAIC.RDS')
+
+# read the saved file
+shapes_fit <- readRDS(file =  './output/output_nonL/shapes/Shapes_4DeltaAIC.RDS')
+table(shapes_fitMin$Selected)
 
 Lin <- shapes_fit %>%
   filter(Selected %in% c('linear/sigmoid', 'linear'))
@@ -239,6 +243,7 @@ Sigm <- shapes_fit %>%
 hist(Lin$Beta_Lin)
 hist(Lin$Int_Lin)
 
+
 ggplot(Lin, aes(x = Int_Lin, y = Beta_Lin)) + geom_point()
 cor.test(Lin$Int_Lin, Lin$Beta_Lin)  ##        cor  -0.4361498
 
@@ -246,19 +251,60 @@ cor.test(Lin$Int_Lin, Lin$Beta_Lin)  ##        cor  -0.4361498
 
 
 ## relations selected based on the MinAIC
+shapes_fitMin <- shapes_fit %>%
+  mutate(sel_minAIC = case_when(mod_minAIC == 'linear' ~ 'linear',
+                                mod_minAIC == 'sigmoid' ~  'sigmoid',
+                                mod_minAIC == 'quadratic' ~ 'quadratic'))
 
-Lin_minAIC <- shapes_fit %>%
-  filter(mod_minAIC %in% c('linear'))
+table(shapes_fitMin$sel_minAIC)
 
-Sigm_minAIC <- shapes_fit %>%
-  filter(mod_minAIC %in% c('sigmoid'))
+## fit the mixed-effect model for linear relation
+Lin_minAIC <- shapes_fitMin %>%
+  filter(sel_minAIC == 'linear')
+
+Quad_minAIC <- shapes_fitMin %>%
+  filter(sel_minAIC == 'quadratic')
+
+Sigm_minAIC <- shapes_fitMin %>%
+  filter(sel_minAIC == 'sigmoid')
+
+# first create a subset of the studies in the raw data set for linear relations
+lin_raw <- all_trans %>%
+  filter(ID %in% Lin_minAIC$ID) %>%
+  mutate(Trait_z = as.numeric(Trait_z))
+
+lin_mix <- glmmTMB(Trait_z ~ temp_center + (1|ID_fac), data = lin_raw, REML = FALSE)
+summary(lin_mix)
+
+# these will be parameters for the rmvnorm
+vcov(lin_mix)
+fixef(lin_mix)
+
+lin_mix_rSl <- glmmTMB(Trait_z ~ temp_center + (temp_center|ID_fac), data = lin_raw, REML = FALSE)
+## In fitTMB(TMBStruc) :
+## Model convergence problem; non-positive-definite Hessian matrix. See vignette('troubleshooting')
 
 
-hist(Lin_minAIC$Beta_Lin)
-hist(Lin_minAIC$Int_Lin)
+# a subset of the raw data for studied for which quadratic relations seem to be most supported
+quad_raw <- all_trans %>%
+  filter(ID %in% Quad_minAIC$ID) %>%
+  mutate(Trait_z = as.numeric(Trait_z)) %>%
+  mutate(temp_center2 = temp_center ^2)
 
-ggplot(Lin_minAIC, aes(x = Int_Lin, y = Beta_Lin)) + geom_point()
-cor.test(Lin_minAIC$Int_Lin, Lin_minAIC$Beta_Lin)  # cor -0.5561408
+lin_quad <- glmmTMB(Trait_z ~ temp_center + temp_center2 + (1|ID_fac), data = quad_raw, REML = FALSE)
+summary(lin_quad)
+
+# par-ms for the quadratic model
+vcov(lin_quad)
+fixef(lin_quad)
 
 
+# a subset of the raw data for studied for which quadratic relations seem to be most supported
+sigm_raw <- all_trans %>%
+  filter(ID %in% Sigm_minAIC$ID) %>%
+  mutate(Trait_z = as.numeric(Trait_z))
 
+# Not sure how to fit sigmoid now within the mixed-effect framework...
+
+
+?rmvnorm()
