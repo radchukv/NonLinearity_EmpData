@@ -221,7 +221,6 @@ table(shapes_fit$mod_minAIC)
 
 hist(shapes_fit$Delta1_AIC[shapes_fit$Selected == 'linear/sigmoid'])  ## those usually are very very close...
 
-
 ## if using a threshol of 2:
 ## linear linear/sigmoid      quadratic        sigmoid
 ## 47            188              5              1
@@ -239,15 +238,16 @@ Lin <- shapes_fit %>%
 Sigm <- shapes_fit %>%
   filter(Selected %in% c('linear/sigmoid', 'sigmoid'))
 
-
 hist(Lin$Beta_Lin)
 hist(Lin$Int_Lin)
-
 
 ggplot(Lin, aes(x = Int_Lin, y = Beta_Lin)) + geom_point()
 cor.test(Lin$Int_Lin, Lin$Beta_Lin)  ##        cor  -0.4361498
 
 ## So: either draw direct combis of slopes and and intercepts OR use multinorm to do so
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~±±±±±~~~~~~~~~~~~##
+####              extract var-cov matrices               ####
 
 
 ## relations selected based on the MinAIC
@@ -306,5 +306,4 @@ sigm_raw <- all_trans %>%
 
 # Not sure how to fit sigmoid now within the mixed-effect framework...
 
-
-?rmvnorm()
+?mvtnorm::rmvnorm()
