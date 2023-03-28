@@ -1,18 +1,30 @@
 ## fitting and comparing the fits of different shapes to the relation
 
+# classic_sigm  is a Boolean to select between two types of sigmoid used in the model
+# (one scaling back to trait values ranging between -2 and 2; and the other one,
+# classical, resulting in y being between 0 and 1) (by def FALSE, i.e. scaled,
+# non-classical version of sigmoid will be used)
+
 ##  a function to assess the fit of diff. shapes to the data
 fit_shape <- function(data = all_trans,
                       x = 'Temp_z',
                       y = 'Trait_z',
                       ID = 1,
                       Thresh = 2,
+                      classic_sigm = FALSE, # Boolean to select between two types of sigmoid used in the model (one scaling back to trait values ranging between -2 and 2; and the other one, classical, resulting in y being between 0 and 1)
                       out_folder = './output/output_nonL/shapes/'){
   sub_data <- droplevels(data[data$ID ==  ID, ])
 sub_data <- sub_data[! (is.na(sub_data[[x]]) | is.na(sub_data[[y]])), ]
 
   lin_mod_form <- paste0(y, '~ interc + beta *', x)
   quad_mod_form <- paste0(y, '~ interc + beta *', x, '+ beta2 * ', x, '^2')
-  sigm_mod_form <- paste0(y, '~ (1/(1+exp(-5*(interc + beta*', x, '))) - 0.5)*4')
+  if(classic_sigm){
+    sigm_mod_form <- paste0(y, '~ 1/(1+exp((interc + beta*', x, ')))')
+
+  }else{
+    sigm_mod_form <- paste0(y, '~ (1/(1+exp(-5*(interc + beta*', x, '))) - 0.5)*4')
+  }
+
   ## have to catch the errors while fitting
   tt.error.linRel <- tryCatch(linRel <- nlsLM(lin_mod_form,
                                               start = list(interc = 0, beta = 1), upper = c(10, 10),
