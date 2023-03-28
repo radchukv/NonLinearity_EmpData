@@ -3,9 +3,9 @@ library(magrittr)
 library(minpack.lm)
 library(patchwork)
 
-## setting the ggplot theme
-# ggplot2::theme_set(theme_classic())
 
+
+# 1. Read in the data -----------------------------------------------------
 
 
 ## reading in the data per study returned from merging all the climwin outputs prepared for SEM
@@ -22,7 +22,7 @@ median(temp_SEM_dur$Dur)  ## 20
 min(temp_SEM_dur$Dur); max(temp_SEM_dur$Dur)
 hist(temp_SEM_dur$Dur)
 
-# I. Data prep ----------------------------------------------------
+# 2. Data prep ----------------------------------------------------
 ## maybe split data prep from exploratory plots
 
 rep <- subset(temp_SEM, Demog_rate_Categ == 'Reproduction')
@@ -55,10 +55,8 @@ length(unique(tot$ID))  ## 288
 ## transform the demog_rate value to have it on the linear scale (for probabilities apply logit
 ## and for counts apply log
 
-## not sure if I still have to pre-sieve the dataset, so as to have unique values per
-## study_authors of species, location, trait, dem. rate - can check... I think this won't be necessary
-## because at the moment the uniqueness of a study is defined by a combi trait-dem rate-location-species
-## but can just check
+## I still have to subset the dataset, so as to have unique values per\
+## combi trait-dem rate-location-species
 
 nrow(tot)  ## 288
 check_unique <- tot %>%
@@ -77,7 +75,7 @@ tot_scale <- tot_unique %>%
     Demog_rate_Categ == 'Reproduction' ~ Demog_rate_mean),
     DemR_value = log(DemR_value)) %>%
   dplyr::group_by(ID) %>%
-  dplyr::mutate(Trait_value = scale(Trait_mean)) %>%
+  dplyr::mutate(Trait_z = scale(Trait_mean)) %>%
   dplyr::ungroup()## otherwise in one go applying log directly on odds and on fecundities
 ## leads to errors when log of 0 is asked for...
 
@@ -102,7 +100,7 @@ abbrev_d <- dat_abbrev %>%
 
 
 ## plot of scaled data
-trait_dem_scale <- ggplot(tot_scale, aes(x = Trait_mean, y = DemR_value)) +
+trait_dem_scale <- ggplot(tot_scale, aes(x = Trait_z, y = DemR_value)) +
   geom_point() +
   ggforce::facet_wrap_paginate(~ ID, ncol = 4,
                                scales = 'free', nrow = 5, page = 1) +
@@ -116,7 +114,7 @@ trait_dem_scale <- ggplot(tot_scale, aes(x = Trait_mean, y = DemR_value)) +
 print(trait_dem_scale)
 
 ggforce::n_pages(trait_dem_scale)
-pdf('./output_nonL/DemRatevsTrait_scaled.pdf')
+pdf('./output_nonL/DemRatevsTrait_raw.pdf')
 for(i in 1:15){
   trait_dem_scale <- ggplot(tot_scale, aes(x = Trait_mean, y = DemR_value)) +
     geom_point() +
@@ -127,15 +125,16 @@ for(i in 1:15){
     geom_text(size = 1.5, data = abbrev_d,
               aes(y = Inf, x = -Inf, label = label, vjust = 1,
                   hjust = 0, colour  = 3)) +
-    theme(legend.position = 'none')
+    theme(legend.position = 'none') + xlab('Trait, raw') +
+    ylab('Demographic value')
   print(trait_dem_scale)
 }
 dev.off()
 
 
-## suing both scaled trait and scaled dem. rate
+## using both scaled trait and scaled dem. rate
 ## plot of scaled data
-trait_dem_Bothscale <- ggplot(tot_scale, aes(x = Trait_value, y = DemR_value)) +
+trait_dem_Bothscale <- ggplot(tot_scale, aes(x = Trait_z, y = DemR_value)) +
   geom_point() +
   ggforce::facet_wrap_paginate(~ ID, ncol = 4,
                                scales = 'free', nrow = 5, page = 1) +
@@ -149,9 +148,9 @@ trait_dem_Bothscale <- ggplot(tot_scale, aes(x = Trait_value, y = DemR_value)) +
 print(trait_dem_Bothscale)
 
 ggforce::n_pages(trait_dem_Bothscale)
-pdf('./output/output_nonL/DemRatevsTrait_Bothscaled.pdf')
+pdf('./output/output_nonL/DemRatevsTrait_scaled.pdf')
 for(i in 1:15){
-  trait_dem_scale <- ggplot(tot_scale, aes(x = Trait_value, y = DemR_value)) +
+  trait_dem_scale <- ggplot(tot_scale, aes(x = Trait_z, y = DemR_value)) +
     geom_point() +
     ggforce::facet_wrap_paginate(~ ID, ncol = 4,
                                  scales = 'free', nrow = 5, page = i) +
@@ -160,13 +159,14 @@ for(i in 1:15){
     geom_text(size = 1.5, data = abbrev_d,
               aes(y = Inf, x = -Inf, label = label, vjust = 1,
                   hjust = 0, colour  = 3)) +
-    theme(legend.position = 'none')
+    theme(legend.position = 'none') + xlab('Trait, scaled') +
+    ylab('Demographic value')
   print(trait_dem_scale)
 }
 dev.off()
 
 
-## plot of unscaled data
+## plot of untransformed, raw data
 trait_dem <- ggplot(tot_scale, aes(x = Trait_mean, y = Demog_rate_mean)) +
   geom_point() +
   ggforce::facet_wrap_paginate(~ ID, ncol = 4,
@@ -195,6 +195,7 @@ for(i in 1:15){
   print(trait_dem)
 }
 dev.off()
+
 
 
 

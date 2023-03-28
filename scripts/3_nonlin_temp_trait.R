@@ -1,4 +1,4 @@
-## detrending the temperature and trait values per study ID (still unsure what to do with the dem. rate)
+## assessing the shapes of relations between temperature and trait and estimating the par-rs for these relations
 
 library(dplyr)
 library(ggplot2)
