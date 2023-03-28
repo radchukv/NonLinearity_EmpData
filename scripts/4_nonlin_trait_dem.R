@@ -4,6 +4,8 @@ library(minpack.lm)
 library(patchwork)
 
 
+# source functions
+source('./R/fit_shape.R')
 
 # 1. Read in the data -----------------------------------------------------
 
@@ -80,7 +82,7 @@ tot_scale <- tot_unique %>%
 ## leads to errors when log of 0 is asked for...
 
 
-# II.  Exploratory plots --------------------------------------------------
+# 3.  Exploratory plots --------------------------------------------------
 
 ## and now plotting the scaled dem. rate values against the trait
 dat_abbrev <- tot_scale %>%
@@ -114,7 +116,7 @@ trait_dem_scale <- ggplot(tot_scale, aes(x = Trait_z, y = DemR_value)) +
 print(trait_dem_scale)
 
 ggforce::n_pages(trait_dem_scale)
-pdf('./output_nonL/DemRatevsTrait_raw.pdf')
+pdf('./output/output_nonL/DemRateScaled_vsTraitRaw.pdf')
 for(i in 1:15){
   trait_dem_scale <- ggplot(tot_scale, aes(x = Trait_mean, y = DemR_value)) +
     geom_point() +
@@ -126,7 +128,7 @@ for(i in 1:15){
               aes(y = Inf, x = -Inf, label = label, vjust = 1,
                   hjust = 0, colour  = 3)) +
     theme(legend.position = 'none') + xlab('Trait, raw') +
-    ylab('Demographic value')
+    ylab('Demographic value, scaled')
   print(trait_dem_scale)
 }
 dev.off()
@@ -148,7 +150,7 @@ trait_dem_Bothscale <- ggplot(tot_scale, aes(x = Trait_z, y = DemR_value)) +
 print(trait_dem_Bothscale)
 
 ggforce::n_pages(trait_dem_Bothscale)
-pdf('./output/output_nonL/DemRatevsTrait_scaled.pdf')
+pdf('./output/output_nonL/DemRatevsTrait_BothScaled.pdf')
 for(i in 1:15){
   trait_dem_scale <- ggplot(tot_scale, aes(x = Trait_z, y = DemR_value)) +
     geom_point() +
@@ -160,7 +162,7 @@ for(i in 1:15){
               aes(y = Inf, x = -Inf, label = label, vjust = 1,
                   hjust = 0, colour  = 3)) +
     theme(legend.position = 'none') + xlab('Trait, scaled') +
-    ylab('Demographic value')
+    ylab('Demographic value, scaled')
   print(trait_dem_scale)
 }
 dev.off()
@@ -180,7 +182,7 @@ trait_dem <- ggplot(tot_scale, aes(x = Trait_mean, y = Demog_rate_mean)) +
   ylab('Demographic rate')
 print(trait_dem)
 
-pdf('./output_nonL/DemRatevsTrait_rawUnscaled.pdf')
+pdf('./output/output_nonL/DemRatevsTrait_BothRawUnscaled.pdf')
 for(i in 1:15){
   trait_dem <- ggplot(tot_scale, aes(x = Trait_mean, y = Demog_rate_mean)) +
     geom_point() +
@@ -191,296 +193,168 @@ for(i in 1:15){
     geom_text(size = 1.5, data = abbrev_d,
               aes(y = Inf, x = -Inf, label = label, vjust = 1,
                   hjust = 0, colour  = 3)) +
-    theme(legend.position = 'none')
+    theme(legend.position = 'none') + xlab('Trait, raw') +
+    ylab('Demographic rate, raw')
   print(trait_dem)
 }
 dev.off()
 
 
 
-
-
-# III. Fitting the three shapes --------------------------------------------
-
-
-## I should scale the traits to mean  = 0 and sd = 2,  ## so that it is closer to how things are simulated...
-##  a function to assess the fit of diff. shapes to the data
-fit_shape <- function(data = tot_scale,
-                      ID = 1,
-                      Thresh = 2,
-                      out_folder = './output_nonL/'){
-  sub_data <- droplevels(data[data$ID ==  ID, ])
-
-  ## have to catch the errors while fitting
-  tt.error.linRel <- tryCatch(linRel <- nlsLM(DemR_value ~ interc +  beta * Trait_value,
-                                              start = list(interc = 0, beta = 1), upper = c(10, 10),
-                                              data = sub_data, algorithm  = "LM",control = list(maxiter = 200)),
-                              error=function(e) e)
-  if(is(tt.error.linRel,"error")){
-    warning(cat('error when fitting linear relation \n',
-                tt.error.linRel[1]$message, '\n'))
-  }
-
-  if(! is(tt.error.linRel,"error")){
-    if(is.infinite(MuMIn::AICc(linRel))){
-    warning(cat('infinite AIC for linear relation \n'))
-    }
-  }
-  tt.error.quadRel <- tryCatch(quadRel <- nlsLM(DemR_value ~ interc + beta * Trait_value + beta2 * Trait_value^2,
-                                                start = list(interc = 0, beta = 1, beta2 = 1), upper = c(10, 10, 10),
-                                                data = sub_data, algorithm  = "LM",control = list(maxiter = 200)),
-                               error=function(e) e)
-  if(is(tt.error.quadRel,"error")){
-    warning(cat('error when fitting quadratic relation \n',
-                tt.error.quadRel[1]$message, '\n'))
-  }
-  if(! is(tt.error.quadRel,"error")) {
-    if(is.infinite(MuMIn::AICc(quadRel))){
-    warning(cat('infinite AIC for quadratic relation \n'))
-    }
-  }
-
-  tt.error.sigmRel <- tryCatch(sigmRel <- nlsLM(DemR_value ~ (1/(1+exp(-5*beta*Trait_value)) - 0.5)*4 + interc,
-                                                start = list(interc = 0, beta = 0), upper = c(10, 10),
-                                                data = sub_data, algorithm  = "LM",control = list(maxiter = 200)),
-                               error=function(e) e)
-  if(is(tt.error.sigmRel,"error")){
-    warning(cat('error when fitting sigmoid relation \n',
-                tt.error.sigmRel[1]$message, '\n'))
-  }
-  if(! is(tt.error.sigmRel,"error")) {
-    if(is.infinite(MuMIn::AICc(sigmRel))){
-    warning(cat('infinite AIC for sigmoid relation \n'))
-    }
-  }
-
-  ## saving a plot as a pdf
-  if(! (is(tt.error.linRel,"error") | is(tt.error.quadRel,"error") |
-        is(tt.error.sigmRel,"error") )){
-    pdf(paste0(out_folder, ID, '_', unique(sub_data$Study_Authors),
-               '_', unique(sub_data$Species), '.pdf'))
-    plot(sub_data$Trait_value, sub_data$DemR_value,
-         ylab = paste0(unique(sub_data$Demog_rate)),
-         xlab = paste0(unique(sub_data$Trait)))
-    points(sub_data$Trait_value, fitted(linRel), pch = 19, col = 'red')
-    points(sub_data$Trait_value, fitted(sigmRel), pch = 21, col = 'grey')
-    points(sub_data$Trait_value, fitted(quadRel), pch = 19, col = 'blue')
-    legend('bottomright', c('linear', 'sigmoid', 'quadratic'),
-           col = c('red', 'grey', 'blue'), pch = c(19, 21, 19))
-    dev.off()
-
-    surv_sub <- subset(sub_data, Demog_rate_Categ == 'Survival')
-    if(nrow(surv_sub) > 1){
-    pdf(paste0(out_folder, ID, '_', unique(sub_data$Study_Authors),
-               '_', unique(sub_data$Species), 'Surv_probab.pdf'))
-    plot(surv_sub$Trait_value, surv_sub$Demog_rate_mean,
-         ylab = paste0(unique(surv_sub$Demog_rate)),
-         xlab = paste0(unique(surv_sub$Trait)))
-    points(surv_sub$Trait_value, exp(fitted(linRel)) / (1 + exp(fitted(linRel))), pch = 19, col = 'red')
-    points(surv_sub$Trait_value, exp(fitted(sigmRel)) / (1 + exp(fitted(sigmRel))), pch = 21, col = 'grey')
-    points(surv_sub$Trait_value, exp(fitted(quadRel)) / (1 + exp(fitted(quadRel))), pch = 19, col = 'blue')
-    legend('bottomright', c('linear', 'sigmoid', 'quadratic'),
-           col = c('red', 'grey', 'blue'), pch = c(19, 21, 19))
-    dev.off()
-    }
-  }
-
-  if(! (is(tt.error.linRel,"error") | is(tt.error.quadRel,"error") |
-        is(tt.error.sigmRel,"error") )){
-    AIC_lin <- MuMIn::AICc(linRel)
-    AIC_quad <- MuMIn::AICc(quadRel)
-    AIC_sigm <- MuMIn::AICc(sigmRel)
-    if(! (is.infinite(AIC_lin) | is.infinite(AIC_quad) | is.infinite(AIC_sigm))){
-
-      res <- data.frame('ID' = unique(sub_data$ID),
-                        'AIC_Lin' = AIC_lin,
-                        'AIC_Quad' = AIC_quad,
-                        'AIC_Sigm' = AIC_sigm,
-                        'Int_Lin' = coef(linRel)[names(coef(linRel)) == 'interc'],
-                        'Beta_Lin' = coef(linRel)[names(coef(linRel)) == 'beta'],
-                        'Int_Quad' = coef(quadRel)[names(coef(quadRel)) == 'interc'],
-                        'Beta_Quad' = coef(quadRel)[names(coef(quadRel)) == 'beta'],
-                        'Beta2_Quad' = coef(quadRel)[names(coef(quadRel)) == 'beta2'],
-                        'Int_Sigm' = coef(sigmRel)[names(coef(sigmRel)) == 'interc'],
-                        'Beta_Sigm' = coef(sigmRel)[names(coef(sigmRel)) == 'beta'])
-      vect_AIC <- c(AIC_lin, AIC_quad, AIC_sigm)
-      names(vect_AIC) <- c('linear', 'quadratic', 'sigmoid')
-      ord <- order(c(AIC_lin, AIC_quad, AIC_sigm))
-      min_AIC <- min(vect_AIC)
-      Delta1 <- vect_AIC[ord][2] - min_AIC
-      Delta2 <- vect_AIC[ord][3] - min_AIC
-
-
-      res$minAIC <- min_AIC
-      res$mod_minAIC <- names(which(vect_AIC == min_AIC))
-      res$Delta1_AIC <- Delta1
-      res$Delta2_AIC <- Delta2
-      if(Delta1 > Thresh){res$Selected <- names(vect_AIC[ord][1])
-      } else {
-        if(Delta1 <= Thresh & Delta2 <= Thresh){
-          # res$Selected <- 'linear'
-          ## this still has to be adjusted accordingly
-            if(length(intersect(names(vect_AIC[ord][c(1,2,3)]),
-                                c('linear', 'sigmoid', 'quadratic'))) == 3){
-              res$Selected <- 'linear/sigmoid'
-            }
-            # if(length(intersect(names(vect_AIC[ord][c(1,2)]),
-            #                     c('linear', 'quadratic'))) == 2){
-            #   res$Selected <- 'linear'
-            # }
-            # if(length(intersect(names(vect_AIC[ord][c(1,2)]),
-            #                     c('sigmoid', 'quadratic'))) == 2){
-            #   res$Selected <- 'sigmoid'
-            # }
-            #
-                  } else {
-          if(Delta1 <= Thresh & Delta2 > Thresh){
-            if(length(intersect(names(vect_AIC[ord][c(1,2)]),
-                                c('linear', 'sigmoid'))) == 2){
-              res$Selected <- 'linear/sigmoid'
-            }
-            if(length(intersect(names(vect_AIC[ord][c(1,2)]),
-                                c('linear', 'quadratic'))) == 2){
-              res$Selected <- 'linear'
-            }
-            if(length(intersect(names(vect_AIC[ord][c(1,2)]),
-                                c('sigmoid', 'quadratic'))) == 2){
-              res$Selected <- 'sigmoid'
-            }
-          }
-        }
-      }
-      return(res)
-    } else {
-      message(paste('infinite AIC for at least one of the models'))
-    }
-  } else {
-    message(paste('error in convergence of at least one of the models'))
-  }
-}
-
-## okay, so if AIC is infinite, it is infinite for all three relations, no point to fiddle further there
+# 4. Fitting the three shapes --------------------------------------------
 
 ## check the function
-fit_shape()
-fit_shape(data = tot_scale,
-          ID = 86, Thresh = 2)
+test <- fit_shape(data = tot_scale,
+          ID = 86, Thresh = 4,
+          x = 'Trait_z',
+          y = 'DemR_value',
+          classic_sigm = FALSE,
+          out_folder = './output/output_nonL/shapes_traitdem/')
 
 
-## applying the function to all studies
-shapes_fit <- do.call('rbind', lapply(unique(tot_scale$ID), FUN = function(x){fit_shape(data = tot_scale, ID = x, Thresh = 5)}))
+## applying the function to all repro studies
+reprod <- tot_scale %>%
+ filter(Demog_rate_Categ =='Reproduction')
+shapes_fit_rep <- do.call('rbind', lapply(unique(reprod$ID), FUN = function(x){fit_shape(data = reprod,
+                                                                                     ID = x, Thresh = 4,
+                                                                                     x = 'Trait_z',
+                                                                                     y = 'DemR_value',
+                                                                                     classic_sigm = FALSE,
+                                                                                     out_folder = './output/output_nonL/shapes_traitdem/reprod/')}))
 
-table(shapes_fit$Selected)  # not a single time for sigmoid. Quadratic rather rare (11 out of 272)
-##  linear/sigmoid      quadratic
-##            260             7
+table(shapes_fit_rep$Selected)
+## linear  linear/sigmoid      quadratic        sigmoid
+# 10             120              5              2
 
-table(shapes_fit$mod_minAIC)
+table(shapes_fit_rep$mod_minAIC)
 ## linear quadratic   sigmoid
-## 116        25       126
-## So, we have difficulties discriminating sigmoid from linear given shallow slopes
-hist(shapes_fit$Beta_Sigm[shapes_fit$Selected == 'linear/sigmoid']) ## yes, so they mainly are very small values, therefore approximates linear
-hist(shapes_fit$Int_Sigm[shapes_fit$Selected == 'linear/sigmoid'])
-## well, these shallow slopes also mean that we simulated more extreme shapes and perhaps those
-## are not common in nature??? + unclear whether under such more shallow slopes the findings
-## on stability will hold...
+## 71        14        52
 
-hist(shapes_fit$Int_Lin[shapes_fit$Selected %in% c('linear/sigmoid', 'linear')])
-hist(shapes_fit$Beta_Lin[shapes_fit$Selected %in% c('linear/sigmoid', 'linear')])  ## interesting, these slopes are more shallow than what we have tested for
+## save the output with the deltaAIC of 4, for drawing par-rs in simu model
+saveRDS(shapes_fit_rep, file = './output/output_nonL/shapes_traitdem/reprod/Shapes_traitRepro_4DeltaAIC.RDS')
 
-hist(shapes_fit$Int_Quad[shapes_fit$Selected %in% c('quadratic')])
-hist(shapes_fit$Beta_Quad[shapes_fit$Selected %in% c('quadratic')])
-hist(shapes_fit$Beta2_Quad[shapes_fit$Selected %in% c('quadratic')]) ## these are also somewhat lower than the assumed abs value of 0.5 that we use in simus
+## applying the function to all studies on survival
+surv <- tot_scale %>%
+  filter(Demog_rate_Categ =='Survival')
+
+shapes_fit_surv <- do.call('rbind', lapply(unique(surv$ID), FUN = function(x){fit_shape(data = surv,
+                                                                                         ID = x, Thresh = 4,
+                                                                                         x = 'Trait_z',
+                                                                                         y = 'DemR_value',
+                                                                                         classic_sigm = TRUE,
+                                                                                         out_folder = './output/output_nonL/shapes_traitdem/survival/')}))
+
+
+table(shapes_fit_surv$Selected)  # not a single time for sigmoid. Quadratic rather rare (11 out of 272)
+##  linear linear/sigmoid      quadratic
+##   54             71              2
+
+table(shapes_fit_surv$mod_minAIC)
+## linear quadratic   sigmoid
+##   99        10        18
+
+## save the output with the deltaAIC of 4, for drawing par-rs in simu model
+saveRDS(shapes_fit_surv, file = './output/output_nonL/shapes_traitdem/survival/Shapes_traitSurv_4DeltaAIC.RDS')
+
+
+## So, we generally have difficulties discriminating sigmoid from linear given shallow slopes for the latter
+
+
+# 5. some histograms of obtained par-s ------------------------------------
+
+## this section has to be revised --> drop altogether?  Or do the same but for the models with min AIC
+# still visualize these par-rs to grasp how they look like
 
 
 ## a plot for the MS with the estimated betas and intercepts
 ## sigm
-pl_Sigm_b <- ggplot(subset(shapes_fit, Selected == 'linear/sigmoid'),
+pl_Sigm_b <- ggplot(subset(shapes_fit_rep, Selected == 'linear/sigmoid'),
        aes(x = Beta_Sigm)) + geom_histogram() +
   theme_bw() + theme(panel.grid.minor = element_blank(),
                      axis.text = element_text(color = 'black'),
                      plot.margin = margin(c(0, 0.2, 0, 0.2)),
                      axis.title.y = element_blank()) +
-  geom_vline(xintercept = quantile(shapes_fit$Beta_Sigm[shapes_fit$Selected
+  geom_vline(xintercept = quantile(shapes_fit_rep$Beta_Sigm[shapes_fit_rep$Selected
                                                         == 'linear/sigmoid'],
                                 probs = c(0.05, 0.95)), col = 'blue', lty = 2) +
   xlab('Slope')
 
-quantile(shapes_fit$Beta_Sigm[shapes_fit$Selected == 'linear/sigmoid'],
-           probs = c(0.05, 0.95))  ## -0.04087630  0.05204491
+quantile(shapes_fit_rep$Beta_Sigm[shapes_fit_rep$Selected == 'linear/sigmoid'],
+           probs = c(0.05, 0.95))  ## -0.09577593  0.13938209
 
-pl_Sigm_int <- ggplot(subset(shapes_fit, Selected == 'linear/sigmoid'),
+pl_Sigm_int <- ggplot(subset(shapes_fit_rep, Selected == 'linear/sigmoid'),
        aes(x = Int_Sigm)) + geom_histogram() +
   theme_bw() + theme(panel.grid.minor = element_blank(),
                      axis.text = element_text(color = 'black'),
                      plot.margin = margin(c(0, 0.2, 0, 0.2)),
                      axis.title.y = element_blank(),
                      plot.title = element_text(hjust=0.5)) +
-  geom_vline(xintercept = quantile(shapes_fit$Int_Sigm[shapes_fit$Selected
+  geom_vline(xintercept = quantile(shapes_fit_rep$Int_Sigm[shapes_fit_rep$Selected
                                                         == 'linear/sigmoid'],
                                    probs = c(0.05, 0.95)), col = 'blue', lty = 2) +
   xlab('Intercept') + labs(title = 'Sigmoid')
 
 
 ## linear
-pl_Lin_b <- ggplot(subset(shapes_fit, Selected %in% c('linear/sigmoid', 'linear')),
+pl_Lin_b <- ggplot(subset(shapes_fit_rep, Selected %in% c('linear/sigmoid', 'linear')),
                     aes(x = Beta_Lin)) + geom_histogram() +
   theme_bw() + theme(panel.grid.minor = element_blank(),
                      axis.text = element_text(color = 'black'),
                      plot.margin = margin(c(0, 0.2, 0, 0.2)),
                      axis.title.x = element_blank()) +
-  geom_vline(xintercept = quantile(shapes_fit$Beta_Lin[shapes_fit$Selected
+  geom_vline(xintercept = quantile(shapes_fit_rep$Beta_Lin[shapes_fit_rep$Selected
                                                         %in% c('linear/sigmoid', 'linear')],
                                    probs = c(0.05, 0.95)), col = 'blue', lty = 2)
 
-quantile(shapes_fit$Beta_Lin[shapes_fit$Selected %in% c('linear/sigmoid', 'linear')],
+quantile(shapes_fit_rep$Beta_Lin[shapes_fit_rep$Selected %in% c('linear/sigmoid', 'linear')],
          probs = c(0.05, 0.95))  ## -0.2043896  0.2638683
 
-pl_Lin_int <- ggplot(subset(shapes_fit, Selected %in% c('linear/sigmoid', 'linear')),
+pl_Lin_int <- ggplot(subset(shapes_fit_rep, Selected %in% c('linear/sigmoid', 'linear')),
                       aes(x = Int_Lin)) + geom_histogram() +
   theme_bw() + theme(panel.grid.minor = element_blank(),
                      axis.text = element_text(color = 'black'),
                      plot.margin = margin(c(0, 0.2, 0, 0.2)),
                      axis.title.x = element_blank(),
                      plot.title = element_text(hjust=0.5)) +
-  geom_vline(xintercept = quantile(shapes_fit$Int_Lin[shapes_fit$Selected
+  geom_vline(xintercept = quantile(shapes_fit_rep$Int_Lin[shapes_fit_rep$Selected
                                                       %in% c('linear/sigmoid', 'linear')],
                                    probs = c(0.05, 0.95)), col = 'blue', lty = 2) +
   labs(title = 'Linear')
 
 
 ## quadr
-pl_Quad_b <- ggplot(subset(shapes_fit, Selected == 'quadratic'),
+pl_Quad_b <- ggplot(subset(shapes_fit_rep, Selected == 'quadratic'),
                    aes(x = Beta_Quad)) + geom_histogram(bins = 10) +
   theme_bw() + theme(panel.grid.minor = element_blank(),
                      axis.text = element_text(color = 'black'),
                      plot.margin = margin(c(0, 0.2, 0, 0.2)),
                      axis.title = element_blank()) +
-  geom_vline(xintercept = quantile(shapes_fit$Beta_Quad[shapes_fit$Selected
+  geom_vline(xintercept = quantile(shapes_fit_rep$Beta_Quad[shapes_fit_rep$Selected
                                                        == 'quadratic'],
                                    probs = c(0.05, 0.95)), col = 'blue', lty = 2)
 
-quantile(shapes_fit$Beta_Quad[shapes_fit$Selected == 'quadratic'],
-         probs = c(0.05, 0.95))  ## -0.3348143  0.1584980
+quantile(shapes_fit_rep$Beta_Quad[shapes_fit_rep$Selected == 'quadratic'],
+         probs = c(0.05, 0.95))  ## -0.3502028  0.1509256
 
-pl_Quad_int <- ggplot(subset(shapes_fit, Selected == 'quadratic'),
+pl_Quad_int <- ggplot(subset(shapes_fit_rep, Selected == 'quadratic'),
                      aes(x = Int_Quad)) + geom_histogram(bins = 10) +
   theme_bw() + theme(panel.grid.minor = element_blank(),
                      axis.text = element_text(color = 'black'),
                      plot.margin = margin(c(0, 0.2, 0, 0.2)),
                      axis.title = element_blank(),
                      plot.title = element_text(hjust=0.5)) +
-  geom_vline(xintercept = quantile(shapes_fit$Int_Quad[shapes_fit$Selected == 'quadratic'],
+  geom_vline(xintercept = quantile(shapes_fit_rep$Int_Quad[shapes_fit_rep$Selected == 'quadratic'],
                                    probs = c(0.05, 0.95)), col = 'blue', lty = 2) +
   labs(title = 'Quadratic')
 
 
 
-pl_Quad_b2 <- ggplot(subset(shapes_fit, Selected == 'quadratic'),
+pl_Quad_b2 <- ggplot(subset(shapes_fit_rep, Selected == 'quadratic'),
                     aes(x = Beta2_Quad)) + geom_histogram(bins = 10) +
   theme_bw() + theme(panel.grid.minor = element_blank(),
                      axis.text = element_text(color = 'black'),
                      plot.margin = margin(c(0, 0.2, 0, 0.2))) +
-  geom_vline(xintercept = quantile(shapes_fit$Beta2_Quad[shapes_fit$Selected
+  geom_vline(xintercept = quantile(shapes_fit_rep$Beta2_Quad[shapes_fit_rep$Selected
                                                         == 'quadratic'],
                                    probs = c(0.05, 0.95)), col = 'blue', lty = 2) +
   xlab('Quadratic slope')
@@ -495,7 +369,7 @@ des_lay <- "
 4567
 456#"
 
-pdf('./output_nonL/EstimatedParS_DemTraitRel_sTraitChange_DeltaAIC5.pdf',
+pdf('./output_nonL/EstimatedParS_DemTraitRel_sTraitChange_DeltaAIC4.pdf',
     width = 10)
 pl_Lin_int + pl_Sigm_int + pl_Quad_int +
   pl_Lin_b + pl_Sigm_b + pl_Quad_b + pl_Quad_b2 +
@@ -508,7 +382,7 @@ pl_Lin_int + pl_Sigm_int + pl_Quad_int +
 dev.off()
 
 ## subset those that have linear/sigmoid as identified relation, to see what deltaAIC is
-lin_sigm <- droplevels(subset(shapes_fit, Selected == 'linear/sigmoid'))
+lin_sigm <- droplevels(subset(shapes_fit_rep, Selected == 'linear/sigmoid'))
 
 pdf('./output_nonL/SupplFig_DistrAIC_Sigmoid_Linear.pdf')
 hist(lin_sigm$Delta1_AIC, main ='', xlab = expression(paste(Delta, 'AIC')),
@@ -518,78 +392,4 @@ abline(v = median(lin_sigm$Delta1_AIC), col = 'blue', lwd = 3, lty = 2)
 dev.off()
 hist(lin_sigm$Delta2_AIC[lin_sigm$mod_minAIC == 'quadratic'])  ## so, function works fine
 table(lin_sigm$mod_minAIC)
-## linear quadratic   sigmoid
-##  116        18       126
-## so, even if sometimes quadratic has lower AIC, overall the deltaAIC to either linear or sigmoid is low...
 
-# III.  Quantify pop stability and link to shapes -------------------------
-
-## calculate CV of popsize (and maybe also Growth rate?) I think these two explorations
-## are enough (CV and the trend in popsize), no need to go for GR. Otherwise the reviewers
-## might ask why we have not used GR as the measure of pop stability in the paper (which we
-## did but do not report)
-CV_pop <- tot_scale %>%
-  dplyr::group_by(ID) %>%
-  dplyr::mutate(CV = sd(Pop_mean, na.rm = TRUE) /
-                  mean(Pop_mean, na.rm = TRUE)) %>%
-  dplyr::distinct(ID, .keep_all = TRUE)
-
-
-## fitting simple linear model to get the tredn in pop size over time
-fit_lm <- function(df){lm(Pop_mean ~ Year, data = df)}
-
-trendsPop <- tot_scale %>%
-  dplyr::group_by(., ID) %>%
-  dplyr::filter(., ! is.na(Pop_mean)) %>%
-  tidyr::nest() %>%
-  dplyr::mutate(
-    LM = purrr::map(purrr::map(data, fit_lm),
-                    broom::tidy)) %>%
-  tidyr::unnest(cols= c(LM), names_sep = '_') %>%
-  dplyr::filter(., LM_term == 'Year') %>%
-  dplyr::select(., -c(LM_term, LM_statistic)) %>%
-  dplyr::mutate(., Trend = dplyr::case_when(LM_p.value >= 0.05 ~ 'stable',
-                                            LM_p.value < 0.05 & LM_estimate > 0 ~ 'positive',
-                                            LM_p.value < 0.05 & LM_estimate < 0 ~ 'negative'))
-
-hist(trendsPop$LM_estimate, breaks = 20, col = 'lightgrey',
-     xlab = 'Slope of population size over years', cex.lab = 1.4,
-     main ='')
-abline(v = median(trendsPop$LM_estimate), lwd = 2, col = 'blue')
-table(trendsPop$Trend)
-
-stab_dat <- merge(CV_pop, subset(trendsPop, select = -data),
-                  by = 'ID')
-stab_shape <- merge(stab_dat, shapes_fit, by = 'ID')
-nrow(stab_shape)
-nrow(shapes_fit)
-
-
-## a simple linear model (hmmm, probably beta-reg would be better)
-## ofr analyses remove the signle linear one
-
-stab_shape_noL <- droplevels(subset(stab_shape, Selected != 'linear'))
-
-## save this plot for the SI
-pdf('./output_nonL/fig_SI_CV_vsDifferentShapes_sTraitChange.pdf')
-ggplot(stab_shape_noL, aes(x = Selected, y = CV)) +
-  geom_boxplot() + theme_bw() + ylab('CV in population size') +
-  xlab('Supported shape of trait-demography relation') +
-  theme(axis.text = element_text(color = 'black'),
-        panel.grid.minor = element_blank())
-dev.off()
-
-
-lm_CV <- lm(CV ~ Selected, data = stab_shape_noL)
-summary(lm_CV)  ## slope is not signif.
-lm_int <- lm(CV ~ 1, data = stab_shape_noL)
-anova(lm_int, lm_CV, test = 'F')  ## nothing
-
-## have to remove the outliers otherwise nothing is really visible
-stab_shape_filt <- stab_shape_noL[stab_shape_noL$LM_estimate < 2000 &
-                                stab_shape_noL$LM_estimate > -1000, ]
-ggplot(stab_shape_filt, aes(x = Selected, y = LM_estimate)) +
-  geom_boxplot()
-
-tab_Shape_trend <-table(stab_shape_filt$Selected, stab_shape_filt$Trend)
-prop.table(tab_Shape_trend, margin = 1)  ## does not look like there are diff. BUT: numbers are too small
