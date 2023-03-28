@@ -11,7 +11,7 @@ fit_shape <- function(data = all_trans,
                       y = 'Trait_z',
                       ID = 1,
                       Thresh = 2,
-                      classic_sigm = FALSE, # Boolean to select between two types of sigmoid used in the model (one scaling back to trait values ranging between -2 and 2; and the other one, classical, resulting in y being between 0 and 1)
+                      classic_sigm = FALSE,
                       out_folder = './output/output_nonL/shapes/'){
   sub_data <- droplevels(data[data$ID ==  ID, ])
 sub_data <- sub_data[! (is.na(sub_data[[x]]) | is.na(sub_data[[y]])), ]
@@ -26,16 +26,6 @@ sub_data <- sub_data[! (is.na(sub_data[[x]]) | is.na(sub_data[[y]])), ]
   }
 
   ## have to catch the errors while fitting
-  tt.error.linRel <- tryCatch(linRel <- nlsLM(lin_mod_form,
-                                              start = list(interc = 0, beta = 1), upper = c(10, 10),
-                                              data = sub_data, algorithm  = "LM",control = list(maxiter = 200)),
-                              error=function(e) e)
-  if(is(tt.error.linRel,"error")){
-    warning(cat('error when fitting linear relation \n',
-                tt.error.linRel[1]$message, 'for study',
-                unique(sub_data$ID), '\n'))
-  }
-
   tt.error.linRel <- tryCatch(linRel <- nlsLM(lin_mod_form,
                                               start = list(interc = 0, beta = 1), upper = c(10, 10),
                                               data = sub_data, algorithm  = "LM",control = list(maxiter = 200)),
@@ -74,26 +64,27 @@ sub_data <- sub_data[! (is.na(sub_data[[x]]) | is.na(sub_data[[y]])), ]
     warning(cat('error when fitting sigmoid relation \n',
                 tt.error.sigmRel[1]$message, 'for study',
                 unique(sub_data$ID), '\n'))
+    for (i in c(-15:15)){
+      for (j in c(-2:2)){
+        tt.error.sigmRel_test <- tryCatch(sigmRel_test <- nlsLM(sigm_mod_form,
+                                                                start = list(interc = i, beta = j),
+                                                                data = sub_data, algorithm  = "LM",control = list(maxiter = 200)),
+                                          error=function(e) e)
+        if(is(tt.error.sigmRel_test,"error")){
+          warning(cat('error when fitting sigmoid relation \n',
+                      tt.error.sigmRel[1]$message, 'for study',
+                      unique(sub_data$ID), '\n'))
+        }
+        if(! is(tt.error.sigmRel_test,"error")){
+          tt.error.sigmRel <- tt.error.sigmRel_test
+          sigmRel <- sigmRel_test
+        }
+      }
+    }
   }
 
   ## trying to find the fitting init par-rs for those fits when sigmoid starts with the values that lead to a singular gradient matrix
-for (i in c(-15:15)){
-  for (j in c(-2:2)){
-  tt.error.sigmRel_test <- tryCatch(sigmRel_test <- nlsLM(sigm_mod_form,
-                                                start = list(interc = i, beta = j),
-                                                data = sub_data, algorithm  = "LM",control = list(maxiter = 200)),
-                               error=function(e) e)
-  if(is(tt.error.sigmRel_test,"error")){
-    warning(cat('error when fitting sigmoid relation \n',
-                tt.error.sigmRel[1]$message, 'for study',
-                unique(sub_data$ID), '\n'))
-  }
-  if(! is(tt.error.sigmRel_test,"error")){
-    tt.error.sigmRel <- tt.error.sigmRel_test
-    sigmRel <- sigmRel_test
-  }
-  }
-}
+
   if(! is(tt.error.sigmRel,"error")) {
     if(is.infinite(MuMIn::AICc(sigmRel))){
       warning(cat('infinite AIC for sigmoid relation \n'))
