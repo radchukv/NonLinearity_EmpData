@@ -201,7 +201,7 @@ check <- fit_shape(data = all_trans,
                    y = 'Trait_z',
                    ID = 1,
                    Thresh = 2,
-                   out_folder = './output/output_nonL/shapes/')
+                   out_folder = './output/output_nonL/shapes_temtrait/')
 
 # run function with detrended temperaturr eand standardized trait across studies
 ## trying with a rather low threshold of 4
@@ -209,7 +209,7 @@ shapes_fit <- do.call('rbind', lapply(unique(all_trans$ID), FUN = function(x){fi
                                                                                         Thresh = 4,  ## a rather low thresh
                                                                                         x = 'temp_center',
                                                                                         y = 'Trait_z',
-                                                                                        out_folder = './output/output_nonL/shapes/')}))
+                                                                                        out_folder = './output/output_nonL/shapes_temtrait/')}))
 
 table(shapes_fit$Selected)
 ## linear  linear/sigmoid      quadratic        sigmoid
@@ -226,10 +226,10 @@ hist(shapes_fit$Delta1_AIC[shapes_fit$Selected == 'linear/sigmoid'])  ## those u
 ## 47            188              5              1
 
 ## save the output with the deltaAIC of 4
-#saveRDS(shapes_fit, file = './output/output_nonL/shapes/Shapes_4DeltaAIC.RDS')
+#saveRDS(shapes_fit, file = './output/output_nonL/shapes_temtrait/Shapes_4DeltaAIC.RDS')
 
 # read the saved file
-shapes_fit <- readRDS(file =  './output/output_nonL/shapes/Shapes_4DeltaAIC.RDS')
+shapes_fit <- readRDS(file =  './output/output_nonL/shapes_temtrait/Shapes_4DeltaAIC.RDS')
 table(shapes_fitMin$Selected)
 
 # some exploration of the results
