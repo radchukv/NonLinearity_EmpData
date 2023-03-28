@@ -42,7 +42,7 @@ ggplot(all, aes(x = Year, y = temp_center, col = ID_fac)) +
   geom_point() + theme(legend.position = 'none')
 hist(all$temp_center)
 
-sd(all$temp_center, na.rm = TRUE)  ##  SD: 5.814646
+sd(all$temp_center, na.rm = TRUE)  ##  SD: 5.814646  -> the value to be used as SD in baseline scenario
 
 
 ## fit mixed-effects model with the study as random intercept, year as explanatory adn centered tmep as response
@@ -217,7 +217,7 @@ table(shapes_fit$Selected)
 
 table(shapes_fit$mod_minAIC)
 
-## hmmm - maybe just use the minimum AIC to select the model???
+##we will  use the minimum AIC to select the type of relations
 
 hist(shapes_fit$Delta1_AIC[shapes_fit$Selected == 'linear/sigmoid'])  ## those usually are very very close...
 
@@ -232,6 +232,7 @@ hist(shapes_fit$Delta1_AIC[shapes_fit$Selected == 'linear/sigmoid'])  ## those u
 shapes_fit <- readRDS(file =  './output/output_nonL/shapes/Shapes_4DeltaAIC.RDS')
 table(shapes_fitMin$Selected)
 
+# some exploration of the results
 Lin <- shapes_fit %>%
   filter(Selected %in% c('linear/sigmoid', 'linear'))
 
@@ -241,15 +242,11 @@ Sigm <- shapes_fit %>%
 hist(Lin$Beta_Lin)
 hist(Lin$Int_Lin)
 
+# check of the correlation
 ggplot(Lin, aes(x = Int_Lin, y = Beta_Lin)) + geom_point()
 cor.test(Lin$Int_Lin, Lin$Beta_Lin)  ##        cor  -0.4361498
 
-## So: either draw direct combis of slopes and and intercepts OR use multinorm to do so
-
-##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~±±±±±~~~~~~~~~~~~##
-####              extract var-cov matrices               ####
-
-
+## So: We will draw direct combis of slopes and and intercepts for the simulation model, using mod_minAIC to separate the three groups of relations
 ## relations selected based on the MinAIC
 shapes_fitMin <- shapes_fit %>%
   mutate(sel_minAIC = case_when(mod_minAIC == 'linear' ~ 'linear',
@@ -257,6 +254,10 @@ shapes_fitMin <- shapes_fit %>%
                                 mod_minAIC == 'quadratic' ~ 'quadratic'))
 
 table(shapes_fitMin$sel_minAIC)
+
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
+####              extract var-cov matrices               ####
 
 ## fit the mixed-effect model for linear relation
 Lin_minAIC <- shapes_fitMin %>%
@@ -306,4 +307,3 @@ sigm_raw <- all_trans %>%
 
 # Not sure how to fit sigmoid now within the mixed-effect framework...
 
-?mvtnorm::rmvnorm()
