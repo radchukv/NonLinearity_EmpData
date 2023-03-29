@@ -260,6 +260,61 @@ saveRDS(shapes_fit_surv, file = './output/output_nonL/shapes_traitdem/survival/S
 ## So, we generally have difficulties discriminating sigmoid from linear given shallow slopes for the latter
 
 
+
+
+##  check correlations among the slopes and intercepts
+Lin_traitSurv <- shapes_fit_surv %>%
+  filter(mod_minAIC == 'linear')
+ggplot(Lin_traitSurv, aes(x = Int_Lin, y = Beta_Lin)) + geom_point()
+cor.test(Lin_traitSurv$Int_Lin, Lin_traitSurv$Beta_Lin)  ## uncorrelated
+
+Quad_traitSurv <- shapes_fit_surv %>%
+  filter(mod_minAIC == 'quadratic')
+ggplot(Quad_traitSurv, aes(x = Int_Quad, y = Beta_Quad)) + geom_point()
+cor.test(Quad_traitSurv$Int_Quad, Quad_traitSurv$Beta_Quad)  ## uncorrelated but power is low
+
+ggplot(Quad_traitSurv, aes(x = Int_Quad, y = Beta2_Quad)) + geom_point()
+cor.test(Quad_traitSurv$Int_Quad, Quad_traitSurv$Beta2_Quad)  ## correlated
+
+
+Sigm_traitSurv <- shapes_fit_surv %>%
+  filter(mod_minAIC == 'sigmoid')
+ggplot(Sigm_traitSurv, aes(x = Int_Sigm, y = Beta_Sigm)) + geom_point()
+cor.test(Sigm_traitSurv$Int_Sigm, Sigm_traitSurv$Beta_Sigm)  ## Strongly correlated
+
+# remove the very different value from the set
+Sigm_traitSurv <- Sigm_traitSurv[Sigm_traitSurv$Int_Sigm > -100, ]
+ggplot(Sigm_traitSurv, aes(x = Int_Sigm, y = Beta_Sigm)) + geom_point()
+cor.test(Sigm_traitSurv$Int_Sigm, Sigm_traitSurv$Beta_Sigm)  ## Still strongly correlated but te direction now flipped
+
+
+## and now correlations for the set with reproduction
+Lin_traitRep <- shapes_fit_rep %>%
+  filter(mod_minAIC == 'linear')
+ggplot(Lin_traitRep, aes(x = Int_Lin, y = Beta_Lin)) + geom_point()
+cor.test(Lin_traitRep$Int_Lin, Lin_traitRep$Beta_Lin)  ## uncorrelated
+
+Quad_traitRep <- shapes_fit_rep %>%
+  filter(mod_minAIC == 'quadratic')
+ggplot(Quad_traitRep, aes(x = Int_Quad, y = Beta_Quad)) + geom_point()
+cor.test(Quad_traitRep$Int_Quad, Quad_traitRep$Beta_Quad)  ## uncorrelated but power is low
+
+ggplot(Quad_traitRep, aes(x = Int_Quad, y = Beta2_Quad)) + geom_point()
+cor.test(Quad_traitRep$Int_Quad, Quad_traitRep$Beta2_Quad)  ## correlated
+
+
+Sigm_traitRep <- shapes_fit_rep %>%
+  filter(mod_minAIC == 'sigmoid')
+ggplot(Sigm_traitRep, aes(x = Int_Sigm, y = Beta_Sigm)) + geom_point()
+cor.test(Sigm_traitRep$Int_Sigm, Sigm_traitRep$Beta_Sigm)
+
+# remove the very different value from the dataset
+Sigm_traitRep <- Sigm_traitRep[Sigm_traitRep$Int_Sigm < 2, ]
+ggplot(Sigm_traitSurv, aes(x = Int_Sigm, y = Beta_Sigm)) + geom_point()
+cor.test(Sigm_traitSurv$Int_Sigm, Sigm_traitSurv$Beta_Sigm)  ## Still strongly correlated
+
+
+
 # 5. some histograms of obtained par-s ------------------------------------
 
 ## this section has to be revised --> drop altogether?  Or do the same but for the models with min AIC
