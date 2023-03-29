@@ -213,9 +213,11 @@ shapes_fit <- do.call('rbind', lapply(unique(all_trans$ID), FUN = function(x){fi
 
 table(shapes_fit$Selected)
 ## linear  linear/sigmoid      quadratic        sigmoid
-# 48            191              1              1
+# 3            236              1              1
 
 table(shapes_fit$mod_minAIC)
+##  linear quadratic   sigmoid
+##   97        16       128
 
 ##we will  use the minimum AIC to select the type of relations
 
