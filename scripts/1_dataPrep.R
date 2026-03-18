@@ -3,6 +3,8 @@
 library(dplyr)
 library(ggplot2)
 library(magrittr)
+library(ncdf4)
+library(tidyverse)
 
 # load functions
 source('./R/convert_JulianDay.R')
@@ -31,7 +33,6 @@ daily_SST_single <- grep('day.mean', SST, value = TRUE)
 all_SST <- raster::stack(lapply(1:length(daily_SST_single), FUN = function(x){
   raster::stack(daily_SST_single[x])}))
 
-
 ## read the prepared rotated SST stack
 rot_SST <- raster::stack('./data-raw/weather/SST/SST_rotated.nc') ## check: this file is not in the folder
 names(rot_SST) <- names(all_SST)
@@ -40,24 +41,19 @@ names(rot_SST) <- names(all_SST)
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
 ####                        BIOLOGICAL data                            ####
 
-biol_dat <- read.csv('./data-raw/Data_1_02_2021.csv', header = T)
+biol_dat <- read.csv('./data-raw/Data_14_08_2024.csv', header = T)
+biol_dat %<>% mutate(across(where(is_character), as_factor))
 unique(biol_dat$Country)
 
+length(unique(biol_dat$ID))
 
-## study by Moeller with non-comparable phenological measure, exclude
-biol_dat <- droplevels(subset(biol_dat,  ID != 183))
 ## alaskan study with many NAs, exclude
 biol_dat <- droplevels(subset(biol_dat, ! ID %in% c(228, 231, 232, 234)))
-
-
-## still take care of dem_rate_Se == 0
-unique(subset(biol_dat, Demog_rate_SE == 0)$Study_Authors) ## drop them??? or replace by NA?
-
 
 biol_dat$Unit_trait[biol_dat$Unit_trait == 'KG'] <- 'kg'
 biol_dat <- droplevels(biol_dat)
 
-length(unique(biol_dat$ID))    ## 309
+length(unique(biol_dat$ID))     ## 213
 
 ## some Demog_rate_Categ have white spaces... Correcting
 biol_dat$Demog_rate_Categ <- trimws(biol_dat$Demog_rate_Categ)
@@ -75,12 +71,12 @@ biol_dat_stand <- convert_JulianDay(biol_data = biol_dat_fc)
 ## splitting hte dataset into all who are not seabirds and the dataset with seabirds only
 SeaBird <- droplevels(biol_dat_stand %>%
                                      dplyr::filter(., BirdType == 'Seabird'))
-length(unique(SeaBird$ID)) # 68
+length(unique(SeaBird$ID)) # 46
 
 others <- droplevels(biol_dat_stand %>%
                        dplyr::filter(., BirdType != 'Seabird'))
 
-length(unique(others$ID))  ## 241
+length(unique(others$ID))  ## 167
 
 
 # quick check of the data in both datasets
@@ -96,8 +92,5 @@ hist(SeaBird$Trait_mean[SeaBird$Trait_Categ == 'Morphological'])
 max(others$Trait_mean[others$Trait_Categ == 'Phenological'], na.rm = T)
 hist(others$Trait_mean[others$Trait_Categ == 'Phenological'])
 
-unique(others$Unit_trait[others$Trait_Categ == 'Morphological']) ## here we have everything, kg, grams, cm, mm.....
-# --> Standardize the trait prior to fitting the rleations between the yearly temperature and the trait
-
-## so basically looking at histogrmas has to be done separatly for weight and for length + per unit....
+unique(others$Unit_trait[others$Trait_Categ == 'Morphological'])
 
