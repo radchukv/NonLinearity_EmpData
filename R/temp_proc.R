@@ -68,7 +68,8 @@
 #'
 temp_proc <- function(biol_data, clim_data,
                          ID, plot_check = FALSE,
-                         out_clim = 'output_climwin_test'){
+                         out_clim = 'output_climwin_test',
+                      oneGrid = TRUE){
 
   biol_data <- droplevels(biol_data[biol_data$ID == ID, ])
 
@@ -136,11 +137,28 @@ temp_proc <- function(biol_data, clim_data,
 
     ptstart <- proc.time()
 
-    ## using a single grid for Temp extraction
-
+    if (requireNamespace("raster", quietly = TRUE)) {
+      ## using a single grid for Temp extraction
+if (oneGrid){
     Clim$Temp <- ifelse(is.na(Clim$Temp),
                           as.numeric(raster::extract(clim_data[[which(temp_dates$Date %in%
                                                                         Clim$Date)]], location_spatial)), NA)
+}
+    else {
+      ## using multiple grids for Temp extraction
+
+      ## marking the focal and the adjecent cells
+      cellNum <- raster::cellFromXY(clim_data, location_spatial)
+      FiveCell <- raster::adjacent(clim_data, cellNum, include = TRUE, pairs = FALSE)
+
+      Clim$Temp <- ifelse(is.na(Clim$Temp),
+                          colMeans(raster::extract(clim_data[[which(temp_dates$Date %in%
+                                                                      Clim$Date)]], FiveCell), na.rm = T),
+                          NA)
+    }
+  } else {
+    message("to be able to run sliding window analyses, you must first run install.packages('raster') !")
+  }
 
     ptfinish <- proc.time() - ptstart
     cat('When extracting weather data from the raster the time elapsed is ',
