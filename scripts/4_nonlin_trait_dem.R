@@ -90,6 +90,12 @@ hist(rep_NestSuc$Demog_rate_mean)  ## also a binary, so remove
 rep_noSuc <- rep %>%
   filter(! Demog_rate %in% c('HatchingSuccess', 'NestSuccess', 'LitterSuccess'))
 
+hist(rep_noSuc$Demog_rate_mean)
+min(rep_noSuc$Demog_rate_mean, na.rm = TRUE)  # 0
+max(rep_noSuc$Demog_rate_mean, na.rm = TRUE) # 17.66667
+quantile(rep_noSuc$Demog_rate_mean, probs = c(0.05, 0.95),
+         na.rm = TRUE)  # 0.2437752 9.4228000
+## so, for fecundity the min and max possible should be 0; 10
 hist(rec$Demog_rate_mean)  ## recruitment goes from 0 to ~ 2. See whether I can include these studies in the
 ## analyses
 
@@ -122,7 +128,7 @@ rep_noSuc_scaled <- droplevels(rep_noSuc %>%
                                  filter(! ID %in% c(86, 121, 122, 123, 140, 143, 159, 190, 201, 209, 210, 211, 212,
                                                     213, 308, 309, 310, 311, 430, 433, 434, 435, 439, 440, 447, 460,
                                                     487, 556, 557, 558, 559, 560, 561, 562, 563)) %>%
-                                 mutate(ID = as_factor(ID)) %>%
+                                 # mutate(ID = as_factor(ID)) %>%  ## !!! this causes the pb for the pop sim code - see if I can get without
                                  dplyr::group_by(ID) %>%
                                  dplyr::mutate(Trait_z = scale(Trait_mean)) %>%
                                  dplyr::ungroup())
@@ -130,7 +136,7 @@ length(unique(rep_noSuc_scaled$ID)) ## 99
 
 surv_scaled <- droplevels(surv_comb %>%
                             dplyr::filter(! is.na(Demog_rate_mean) & ! is.nan(Demog_rate_mean)) %>%
-                                 mutate(ID = as_factor(ID)) %>%
+                                # mutate(ID = as_factor(ID)) %>%
                                  dplyr::group_by(ID) %>%
                                  dplyr::mutate(Trait_z = scale(Trait_mean)) %>%
                                  dplyr::ungroup())
@@ -360,6 +366,7 @@ shapes_fit_rep <- do.call('rbind', lapply(unique(rep_noSuc_scaled$ID), FUN = fun
                                                                                      y = 'Demog_rate_mean',
                                                                                      surv_rate  = FALSE,
                                                                                      out_folder = './output/output_nonL/shapes_traitdem/reprod/')}))
+shapes_fit_rep$ID <- as.integer(as.character(shapes_fit_rep$ID))
 
 table(shapes_fit_rep$mod_minAIC)
 ## linear quadratic   sigmoid
@@ -387,7 +394,7 @@ shapes_fit_surv <- do.call('rbind', lapply(unique(surv_scaled$ID), FUN = functio
                                                                                          out_folder = './output/output_nonL/shapes_traitdem/survival/')}))
 
 
-
+shapes_fit_surv$ID <- as.integer(as.character(shapes_fit_surv$ID))
 table(shapes_fit_surv$mod_minAIC)
 ## linear quadratic   sigmoid
 ##    56        10        66

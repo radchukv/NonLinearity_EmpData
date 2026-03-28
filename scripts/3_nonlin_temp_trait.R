@@ -78,6 +78,30 @@ length(unique(all$ID_fac)) ## 209 studies
 
 sd(all$temp_center, na.rm = TRUE)  ##  SD: 0.631277
 
+# number of phenological vs morphological
+all_unique <- all %>%
+  distinct(pick(ID), .keep_all = TRUE)
+
+table(all_unique$Trait_Categ)
+
+# Phenological Morphological
+# 94           115
+
+## duration per trait categ
+all_dur_perTrait <- all %>%
+  dplyr::summarize(.by = c(ID, Trait_Categ), Dur = dplyr::n()) %>%
+  group_by(Trait_Categ) %>%
+  dplyr::summarise(meanDur = mean(Dur),
+                   medianDur = median(Dur),
+                   minDur = min(Dur),
+                   maxDur = max(Dur))
+
+# Trait_Categ   meanDur medianDur minDur maxDur
+# <fct>           <dbl>     <dbl>  <int>  <int>
+#   1 Phenological     27.2        24      9     63
+# 2 Morphological    19.8        15      9     60
+
+
 all_Var <- all %>%
   dplyr:: group_by(ID) %>%
   summarize(SD = sd(temp_center, na.rm = TRUE))
