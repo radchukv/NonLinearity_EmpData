@@ -3,4 +3,6 @@
 .RData
 .Ruserdata
 data-raw
-output
+output/output_nonL
+output/output_temp
+output/output_temp_SeaB
