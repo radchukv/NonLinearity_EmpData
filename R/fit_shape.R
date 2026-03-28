@@ -20,8 +20,8 @@ sub_data <- sub_data[! (is.na(sub_data[[x]]) | is.na(sub_data[[y]])), ]
   lin_mod_form <- paste0(y, '~ interc + beta *', x)
 
   if(surv_rate){
-    sigm_mod_form <- paste0(y, '~ 1/(1+exp((interc + beta*', x, ')))')
-    quad_mod_form <- paste0(y, '~ 1/(1+exp((interc + beta *', x, '+ beta2 * ', x, '^2)))')
+    sigm_mod_form <- paste0(y, '~ 1/(1+exp(interc + beta*', x, '))')
+    quad_mod_form <- paste0(y, '~ 1/(1+exp(interc + beta *', x, '+ beta2 * ', x, '^2))')
   }else{
     sigm_mod_form <- paste0(y, '~ (1/(1+exp(-5*(interc + beta*', x, '))) - 0.5)*4')
     quad_mod_form <- paste0(y, '~ interc + beta *', x, '+ beta2 * ', x, '^2')
